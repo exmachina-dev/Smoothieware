@@ -20,6 +20,7 @@
 #define tool_offset_checksum            CHECKSUM("delta_tool_offset")
 
 #define delta_mirror_xy_checksum        CHECKSUM("delta_mirror_xy")
+#define delta_mirror_z_checksum        CHECKSUM("delta_mirror_z")
 
 const static float pi     = 3.14159265358979323846;    // PI
 const static float two_pi = 2 * pi;
@@ -55,6 +56,9 @@ RotaryDeltaSolution::RotaryDeltaSolution(Config *config)
 
     // mirror the XY axis
     mirror_xy= config->value(delta_mirror_xy_checksum)->by_default(true)->as_bool();
+
+    // mirror the Z axis
+    mirror_z = config->value(delta_mirror_z_checksum)->by_default(false)->as_bool();
 
     debug_flag= false;
     init();
@@ -152,12 +156,16 @@ void RotaryDeltaSolution::cartesian_to_actuator(const float cartesian_mm[], Actu
     // selected by a config option
     float x0 = cartesian_mm[X_AXIS];
     float y0 = cartesian_mm[Y_AXIS];
+    float z0 = cartesian_mm[Z_AXIS];
     if(mirror_xy) {
         x0= -x0;
         y0= -y0;
     }
+    if (mirror_z) {
+        z0= -z0;
+    }
 
-    float z_with_offset = cartesian_mm[Z_AXIS] + z_calc_offset; //The delta calculation below places zero at the top.  Subtract the Z offset to make zero at the bottom.
+    float z_with_offset = z0 + z_calc_offset; //The delta calculation below places zero at the top.  Subtract the Z offset to make zero at the bottom.
 
     int status =              delta_calcAngleYZ(x0,                    y0,                  z_with_offset, alpha_theta);
     if (status == 0) status = delta_calcAngleYZ(x0 * cos120 + y0 * sin120, y0 * cos120 - x0 * sin120, z_with_offset, beta_theta); // rotate co-ordinates to +120 deg
@@ -204,10 +212,14 @@ void RotaryDeltaSolution::actuator_to_cartesian(const ActuatorCoordinates &actua
     if(mirror_xy) {
         cartesian_mm[X_AXIS]= -x;
         cartesian_mm[Y_AXIS]= -y;
-        cartesian_mm[Z_AXIS]= z;
     }else{
         cartesian_mm[X_AXIS]= x;
         cartesian_mm[Y_AXIS]= y;
+    }
+
+    if (mirror_z) {
+        cartesian_mm[Z_AXIS]= -z;
+    } else {
         cartesian_mm[Z_AXIS]= z;
     }
 }
